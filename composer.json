@@ -1,5 +1,5 @@
 {
-    "name": "devlity/crawler",
+    "name": "trntv/crawler",
     "authors": [
         {
             "name": "Eugine Terentev",
@@ -9,5 +9,8 @@
     "require": {
         "sunra/php-simple-html-dom-parser": "1.5.0.*@dev",
         "sabberworm/php-css-parser": "dev-master"
+    },
+    "autoload": {
+        "psr-4": { "trntv\\crawler\\": "" }
     }
 }

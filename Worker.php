@@ -1,14 +1,16 @@
 <?php
+namespace trntv\crawler;
 
 /**
  * Class Crawler
  */
-class Crawler {
+class Worker {
 
     /**
-     * @var
+     * @var string папка для сохранения скачанных файлов
      */
     public $savePath;
+
     /**
      * @var mixed
      */
@@ -17,28 +19,28 @@ class Crawler {
     /**
      * @var array
      */
-    private $urlsStack = array();
+    private $_urlsStack = array();
     /**
      * @var array
      */
-    private $crawledUrls = array();
+    private $_crawledUrls = array();
 
     /**
      * @var
      */
-    private $pause;
+    private $_pause;
     /**
      * @var
      */
-    private $currentUrl;
+    private $_currentUrl;
     /**
      * @var
      */
-    private $currentFileType;
+    private $_currentFileType;
     /**
      * @var
      */
-    private $totalBytes;
+    private $_totalBytes;
     /**
      * @var string
      */
@@ -56,18 +58,18 @@ class Crawler {
         $this->schema = parse_url($url, PHP_URL_SCHEME);
         $this->urlParams = parse_url($url, PHP_URL_QUERY);
         $this->savePath = $savePath;
-        $this->urlsStack[] = $url;
+        $this->_urlsStack[] = $url;
     }
 
     /**
      *
      */
     public function crawl(){
-        while(!empty($this->urlsStack)){
+        while(!empty($this->_urlsStack)){
             $this->get($this->getFromUrlsStack());
         }
-        echo "Total Files: ".count($this->crawledUrls);
-        echo "Total Size: ".round($this->totalBytes / 1024 / 1024, 2)." MB";
+        echo "Total Files: ".count($this->_crawledUrls);
+        echo "Total Size: ".round($this->_totalBytes / 1024 / 1024, 2)." MB";
     }
 
     /**
@@ -77,13 +79,13 @@ class Crawler {
      */
     private function createAbsoluteUrl($url, $currentUrlPath = false){
         if(!$currentUrlPath){
-            $currentUrlPathArray = parse_url($this->currentUrl);
+            $currentUrlPathArray = parse_url($this->_currentUrl);
             if($currentUrlPathArray && isset($currentUrlPathArray['host'])){
                 $currentUrlPath = $currentUrlPathArray['scheme'].'://'.$currentUrlPathArray['host'].$currentUrlPathArray['path'];
             } elseif($currentUrlPathArray && !isset($currentUrlPathArray['host'])) {
                 $currentUrlPath = $currentUrlPathArray['path'];
             } else {
-                $currentUrlPath = $this->currentUrl;
+                $currentUrlPath = $this->_currentUrl;
             }
 
             if(preg_match('/(?:.)*\/((?:.)*?\.(?:.)*)$/sim', parse_url($currentUrlPath, PHP_URL_PATH), $filename)){
@@ -116,7 +118,7 @@ class Crawler {
      * @return mixed
      */
     private function getFromUrlsStack(){
-        $url = array_shift($this->urlsStack);
+        $url = array_shift($this->_urlsStack);
         $this->addToCrawledUrls($url);
         return $url;
     }
@@ -125,14 +127,14 @@ class Crawler {
      * @param $url
      */
     public function addToUrlsStack($url){
-        $this->urlsStack[] = $this->createAbsoluteUrl($url);
+        $this->_urlsStack[] = $this->createAbsoluteUrl($url);
     }
 
     /**
      * @param $url
      */
     public function addToCrawledUrls($url){
-        $this->crawledUrls[] = $url;
+        $this->_crawledUrls[] = $url;
     }
 
     /**
@@ -140,19 +142,19 @@ class Crawler {
      * @return bool
      */
     public function get($url){
-        $this->currentUrl = $url;
+        $this->_currentUrl = $url;
         echo "Crawling $url".PHP_EOL;
         $contentType = get_headers($url, 1)["Content-Type"];
         if(is_array($contentType)){
             return false;
         }
-        $this->currentFileType = strtolower($contentType);
+        $this->_currentFileType = strtolower($contentType);
         $content = @file_get_contents($url);
         if(!$content){
             return;
         }
-        if(strpos($this->currentFileType, 'text/html') !== false){
-            $content = Sunra\PhpSimple\HtmlDomParser::str_get_html($content);
+        if(strpos($this->_currentFileType, 'text/html') !== false){
+            $content = \Sunra\PhpSimple\HtmlDomParser::str_get_html($content);
             foreach($content->find('a') as $a){
                 if($this->checkUrl($a->href)){
                     $this->addToUrlsStack($a->href);
@@ -180,7 +182,7 @@ class Crawler {
             }
         }
 
-        if(strpos($this->currentFileType, 'text/css') !== false){
+        if(strpos($this->_currentFileType, 'text/css') !== false){
             if(preg_match_all('/url\((?:"|\')?(.*?)(?:"|\')?\)/sim', $content, $files)){
                 foreach($files[1] as $file){
                     if($this->checkUrl($file)){
@@ -220,7 +222,7 @@ class Crawler {
         }
         /*echo "Filename: $path".PHP_EOL;
         echo "Path: $path".PHP_EOL;*/
-        $this->totalBytes += file_put_contents($newFile, $content);
+        $this->_totalBytes += file_put_contents($newFile, $content);
         // @todo: realpath
         echo "Saved to: $newFile".PHP_EOL;
         echo "----------------------------".PHP_EOL;
@@ -230,8 +232,8 @@ class Crawler {
      *
      */
     private function pause(){
-        if($this->pause){
-            $timeout = $this->pause;
+        if($this->_pause){
+            $timeout = $this->_pause;
             while($timeout !== 0){
                 echo "$timeout...";
                 sleep(1);
@@ -254,7 +256,7 @@ class Crawler {
         }
 
 
-        if(in_array($this->createAbsoluteUrl($url), $this->urlsStack) || in_array($this->createAbsoluteUrl($url), $this->crawledUrls)){
+        if(in_array($this->createAbsoluteUrl($url), $this->_urlsStack) || in_array($this->createAbsoluteUrl($url), $this->_crawledUrls)){
             return false;
         }
 
